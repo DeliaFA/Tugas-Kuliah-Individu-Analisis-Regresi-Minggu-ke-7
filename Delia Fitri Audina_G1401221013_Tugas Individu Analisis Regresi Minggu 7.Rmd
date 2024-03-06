@@ -1,0 +1,125 @@
+---
+title: "Tugas Individu Kuliah ANREG"
+author: "Delia Fitri Audina_G1401221013"
+date: "2024-03-05"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r}
+# membaca data
+library(readxl)
+library(tidyverse)
+library(GGally)
+library(dplyr)
+library(lmtest)
+library(stats)
+dataAnreg <- read_xlsx("C:/Users/delia/Downloads/DataAnreg.xlsx")
+dataAnreg
+```
+
+```{r}
+#Eksplorasi Data
+ggplot(data=dataAnreg)+
+  geom_point(aes(x=X, y=Y),col="red")+
+  labs(title = "Scatterplot")
+```
+Interpretasi : Scatter plot di atas menunjukkan X dan Y tidak berhubungan linear.
+
+```{r}
+#Uji Normalitas
+qqnorm(dataAnreg$Y)
+qqline(dataAnreg$Y, col = "blue")
+```
+Melalui Plot QQ galat, sebaran cenderung simetris dengan ujung-ujung menipis. Sebagai pembuktian akan dilakukan shapiro-wilk test. Dengan hipotesis bahwa :
+H0 = data menyebar normal
+H1 = Data tidak menyebar normal
+
+```{r}
+#Shapiro Test
+shapiro.test(dataAnreg$Y)
+```
+Interpretasi: Dari hasil shapiro test di atas membuktikan bahwa p-value lebih besar dari 0.05.Hal ini berarti hipotesis terima H0 yaitu data menyebar normal. Meskipun hasil dari qq plot cenderung memiliki asumsi bahwa data tidak menyebar normal.
+
+```{r}
+#Model Regresi
+model_lm <- lm(formula = Y ~ X, data = dataAnreg)
+summary(model_lm)
+model_lm
+```
+```{r}
+#Uji Autokorelasi
+
+acf(model_lm$residuals)
+```
+Interpretasi : Dapat dilihat nilai autokorelasi yang didaptkan yaitu 0.5 berada di luar batas kepercayaan 95%. Hal ini menunjukkan bahwa autokorelasi yang signifikan.Sebagai pembuktian akan dilakukan test dengan p-test hasil Uji Durbin-Wayson.
+
+```{r}
+#Uji Durbin-Wayson
+dwtest(model_lm)
+```
+Interpretasi : Setelah dilakukan Uji Durbin-Wayson ternyata benar hasil dari nilai autokorelasinya yaitu 0.48 berada di luar batas kepercayaan 95%. Hal ini menunjukkan bahwa autokorelasi yang signifikan dan membuat asumsiGauss-Markov tidak terpenuhi tentang asumsi non-autokorelasi.
+
+```{r}
+#Uji Homoskedastisitas
+plot(model_lm, which = 1)
+```
+Interpretasi : Dapat dilihat dari Uji Homoskedastisitas ini untuk varians residual bernilai konstan itu artinya cenderung meningkat seiring dengan nilai prediksi. Maka dapat disimpulkan adanya Homoskedastisitas.Selanjutnya melakukan transformasi
+
+```{r}
+#Transformasi
+#Nilai Bobot
+
+# Menghitung residu absolut dari model regresi
+resid.abs <- abs(model_lm$residuals)
+
+# Mengambil nilai-nilai yang diprediksi dari model
+fitted.val <- model_lm$fitted.values
+
+# Membuat model regresi kedua menggunakan residu absolut sebagai variabel dependen
+fit <- lm(resid.abs ~ fitted.val, data = dataAnreg)
+
+# Menghitung bobot kuadrat terbalik
+data.wsl <- 1 / fit$fitted.values^2
+
+# Menampilkan bobot kuadrat terbalik
+print(data.wsl)
+
+# Melakukan plot dari bobot kuadrat terbalik
+plot(data.wsl)
+```
+
+```{r}
+#model analisis regresi bobot terkecil
+model.wsl <- lm(Y~X, data = dataAnreg, weights = data.wsl)
+plot(model.wsl)
+summary(model.wsl)
+```
+Interpretasi : Dari perhitungan yang telah dilakukan ternyata hasil transformasi WLS belum cukup efektif dalam mentransformasi model regresi ini. Hal ini dapat dibuktikan dari hasil eksplorasi yang masih belum memenuhi asumsi Gauss-Markov.
+
+```{r}
+#Transformasi Akar pada x dan y
+databaru <- dataAnreg %>%
+  mutate(y = sqrt(Y)) %>%
+  mutate(x = sqrt(X))
+
+model1 <- lm(y ~ X, data = databaru)
+plot(x = databaru$X, y = databaru$y)
+plot(model1)
+
+summary(model1)
+```
+Kesimpulan :Persamaan regresi menunjukkan adanya hubungan kuadrat negatif antara variabel dependen (Y) dan variabel independen (X). Artinya, ketika nilai X meningkat, nilai Y cenderung menurun dengan tingkat penurunan yang semakin cepat. Koefisien regresi dan perubahan dalam nilai Y untuk setiap perubahan dalam nilai X membantu dalam mengukur seberapa besar pengaruh X terhadap Y.
+
+Y* = 7.015455 - 0.081045X
+Y* = akar Y
+
+jika dilakukan transformasi balik menjadi:
+Y = (7.015455-0.081045X)^2
+
+Konstanta 7.015455 mewakili nilai Y ketika X sama dengan 0, sedangkan koefisien -0.081045 menunjukkan seberapa besar perubahan dalam Y yang terkait dengan perubahan dalam X. Semakin besar nilai absolut dari koefisien, semakin besar pengaruh variabel X terhadap variabel Y.
+
+
+
